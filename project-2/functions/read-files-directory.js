@@ -1,16 +1,18 @@
 const fs = require("fs");
 const path = require("path");
+const { Observable } = require("rxjs");
 
 function readFilesDirectory(directoryPath) {
-  return new Promise((resolve, reject) => {
+  return new Observable((subscriber) => {
     try {
-      const filesFiltered = fs
-        .readdirSync(directoryPath)
-        .map((file) => path.join(directoryPath, file));
+      // Data Stream
+      fs.readdirSync(directoryPath).forEach((file) =>
+        subscriber.next(path.join(directoryPath, file))
+      );
 
-      resolve(filesFiltered);
+      subscriber.complete();
     } catch (err) {
-      reject(err);
+      subscriber.error(err);
     }
   });
 }

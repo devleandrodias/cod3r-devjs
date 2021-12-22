@@ -1,6 +1,7 @@
 const path = require("path");
+const { Observable } = require("rxjs");
 
-const readFiles = require("./functions/read-files");
+const readFile = require("./functions/read-file");
 const readFilesDirectory = require("./functions/read-files-directory");
 const filterExtensionFile = require("./functions/filter-extension-file");
 
@@ -17,19 +18,53 @@ const {
   removeUsingRegExp,
 } = require("./functions/remove-invalids-caracters");
 
-const joinElements = (element) => element.join(" ");
-const separateByLines = (lines) => lines.split("\n");
-const separateByWords = (lines) => lines.split(" ");
+function separateTextByLines() {
+  return function (source) {
+    return new Observable((subscriber) => {
+      source.subscribe({
+        next(value) {
+          value.split("\n").forEach((x) => {
+            subscriber.next(x);
+          });
+        },
+      });
+    });
+  };
+}
 
-function groupWords(words) {
-  return Object.values(
-    words.reduce((grouping, y) => {
-      const word = y.toLowerCase();
-      const quantity = grouping[word] ? grouping[word].quantity + 1 : 1;
-      grouping[word] = { word, quantity };
-      return grouping;
-    }, {})
-  );
+function separateTextByWords() {
+  return function (source) {
+    return new Observable((subscriber) => {
+      source.subscribe({
+        next(texto) {
+          texto.split(" ").forEach((step) => {
+            subscriber.next(step);
+          });
+        },
+      });
+    });
+  };
+}
+
+function groupWords() {
+  return function (source) {
+    return new Observable((subscriber) => {
+      source.subscribe({
+        next(value) {
+          const aggrouped = Object.values(
+            value.reduce((grouping, y) => {
+              const word = y.toLowerCase();
+              const quantity = grouping[word] ? grouping[word].quantity + 1 : 1;
+              grouping[word] = { word, quantity };
+              return grouping;
+            }, {})
+          );
+
+          subscriber.next(aggrouped);
+        },
+      });
+    });
+  };
 }
 
 function orderBy(attr, order = "desc") {
@@ -43,16 +78,13 @@ function orderBy(attr, order = "desc") {
 const directoryPath = path.resolve(__dirname, "..", "resources", "subtitles");
 
 readFilesDirectory(directoryPath)
-  .then(filterExtensionFile(".srt"))
-  .then(readFiles)
-  .then(joinElements)
-  .then(separateByLines)
-  .then(removeBlankLines)
-  .then(removeUsingRegExp(patternSubtitleTimer))
-  .then(removeUsingRegExp(patternOnlyNumbers))
-  .then(removeCaracters(invalidsCaracters))
-  .then(joinElements)
-  .then(separateByWords)
-  .then(groupWords)
-  .then(orderBy("quantity"))
-  .then(console.log);
+  .pipe(filterExtensionFile(".srt"))
+  .pipe(readFile())
+  .pipe(separateTextByLines())
+  .pipe(removeBlankLines())
+  .pipe(removeUsingRegExp(patternSubtitleTimer))
+  .pipe(removeUsingRegExp(patternOnlyNumbers))
+  .pipe(removeCaracters(invalidsCaracters))
+  .pipe(separateTextByWords())
+  .pipe(removeBlankLines())
+  .subscribe(console.log);

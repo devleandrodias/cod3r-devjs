@@ -1,6 +1,16 @@
+const { Observable } = require("rxjs");
+
 function filterExtensionFile(pattern) {
-  return function (files) {
-    return files.filter((el) => el.endsWith(pattern));
+  return function (source) {
+    return new Observable((subscriber) => {
+      source.subscribe({
+        next(value) {
+          if (value.endsWith(pattern)) {
+            subscriber.next(value);
+          }
+        },
+      });
+    });
   };
 }
 

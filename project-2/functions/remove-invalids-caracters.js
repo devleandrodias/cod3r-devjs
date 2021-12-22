@@ -1,19 +1,43 @@
-function removeBlankLines(array) {
-  return array.filter((el) => el.trim());
+const { Observable } = require("rxjs");
+
+function removeBlankLines() {
+  return function (source) {
+    return new Observable((subscriber) => {
+      source.subscribe({
+        next(value) {
+          if (value.trim()) {
+            subscriber.next(value);
+          }
+        },
+      });
+    });
+  };
 }
 
 function removeUsingRegExp(pattern) {
-  return function (array) {
-    return array.filter((el) => !el.match(new RegExp(pattern)));
+  return function (source) {
+    return new Observable((subscriber) => {
+      source.subscribe({
+        next(value) {
+          if (!value.match(new RegExp(pattern))) subscriber.next(value);
+        },
+      });
+    });
   };
 }
 
 function removeCaracters(caracters) {
-  return function (array) {
-    return array.map((el) => {
-      return caracters.reduce((x, y) => {
-        return x.split(y).join("").trim();
-      }, el);
+  return function (source) {
+    return new Observable((subscriber) => {
+      source.subscribe({
+        next(value) {
+          const result = caracters.reduce((x, y) => {
+            return x.split(y).join("").trim();
+          }, value);
+
+          subscriber.next(result);
+        },
+      });
     });
   };
 }
